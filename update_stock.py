@@ -4,6 +4,9 @@ import math
 from notion_client import Client
 import yfinance as yf
 
+# 修正：強制關閉 yfinance 的快取功能，避免 sqlite database is locked 錯誤
+yf.set_tz_cache_location(None)
+
 # 1. 初始化 Notion Client
 notion_token = os.environ.get("NOTION_TOKEN")
 database_id = os.environ.get("DATABASE_ID")
@@ -58,13 +61,12 @@ def get_stock_prices(tickers):
     print(f"正在從 Yahoo Finance 查詢股價: {tickers}")
     prices = {}
     try:
-        # 批次下載資料，節省 API 呼叫時間
-        data = yf.download(tickers, period="1d", group_by="ticker", progress=False)
+        # 加上 nans_to_nulls=False 確保新版 yfinance 下載穩定
+        data = yf.download(tickers, period="1d", group_by="ticker", progress=False, nans_to_nulls=False)
         
         for ticker in tickers:
             try:
                 if len(tickers) == 1:
-                    # 當只有一檔股票時，yfinance 的 Dataframe 結構不同
                     price = data['Close'].iloc[-1]
                 else:
                     price = data[ticker]['Close'].iloc[-1]
